@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avro to Hive SQL Converter</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    
+    body {
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .panel-container {
+      display: flex;
+      gap: 20px;
+      height: calc(100vh - 150px);
+    }
+    
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: white;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .panel-header {
+      padding: 10px 15px;
+      background-color: #f9f9f9;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    
+    .panel-content {
+      flex: 1;
+      padding: 15px;
+      overflow: auto;
+    }
+    
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      resize: none;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      outline: none;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    input[type="text"] {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    button {
+      padding: 8px 16px;
+      background-color: #4a6fa5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #3a5a8c;
+    }
+    
+    .status {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .error {
+      color: #d9534f;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    
+    .success {
+      color: #5cb85c;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Avro to Hive SQL Converter</h1>
+    </header>
+    
+    <div class="controls">
+      <input type="text" id="tableName" placeholder="Table Name (default: default_table)">
+      <button id="convertBtn">Convert</button>
+      <button id="clearBtn">Clear</button>
+      <span id="status" class="status"></span>
+    </div>
+    
+    <div class="panel-container">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Avro Schema (JSON)</span>
+        </div>
+        <div class="panel-content">
+          <textarea id="avroInput" placeholder="Paste your Avro schema here..."></textarea>
+        </div>
+      </div>
+      
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Hive SQL</span>
+          <button id="copyBtn" title="Copy to clipboard">Copy</button>
+        </div>
+        <div class="panel-content">
+          <textarea id="hiveOutput" readonly placeholder="Hive SQL will appear here..."></textarea>
+        </div>
+      </div>
+    </div>
+    
+    <div id="error" class="error"></div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const avroInput = document.getElementById('avroInput');
+      const hiveOutput = document.getElementById('hiveOutput');
+      const tableName = document.getElementById('tableName');
+      const convertBtn = document.getElementById('convertBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const copyBtn = document.getElementById('copyBtn');
+      const status = document.getElementById('status');
+      const error = document.getElementById('error');
+      
+      // Load sample schema
+      const sampleSchema = {
+        "type": "record",
+        "namespace": "Tutorialspoint",
+        "name": "Employee",
+        "fields": [
+          { "name": "Name", "type": "string" },
+          { "name": "Age", "type": "int" },
+          { 
+            "name": "Address",
+            "type": {
+              "type": "record",
+              "name": "AddressRecord",
+              "fields": [
+                { "name": "street", "type": "string" },
+                { "name": "city", "type": "string" }
+              ]
+            }
+          }
+        ]
+      };
+      
+      avroInput.value = JSON.stringify(sampleSchema, null, 2);
+      
+      // Convert Avro to Hive SQL
+      convertBtn.addEventListener('click', async () => {
+        error.textContent = '';
+        status.textContent = 'Converting...';
+        status.className = 'status';
+        
+        try {
+          const avroSchema = avroInput.value.trim();
+          
+          if (!avroSchema) {
+            throw new Error('Please enter an Avro schema');
+          }
+          
+          const response = await fetch('/api/convert', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              avroSchema: JSON.parse(avroSchema),
+              tableName: tableName.value
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
+          hiveOutput.value = data.hiveQL;
+          status.textContent = 'Conversion successful!';
+          status.className = 'status success';
+        } catch (err) {
+          error.textContent = err.message;
+          status.textContent = 'Conversion failed';
+          status.className = 'status error';
+        }
+      });
+      
+      // Clear both panels
+      clearBtn.addEventListener('click', () => {
+        avroInput.value = '';
+        hiveOutput.value = '';
+        tableName.value = '';
+        error.textContent = '';
+        status.textContent = '';
+      });
+      
+      // Copy Hive SQL to clipboard
+      copyBtn.addEventListener('click', () => {
+        if (!hiveOutput.value) return;
+        
+        hiveOutput.select();
+        document.execCommand('copy');
+        
+        status.textContent = 'Copied to clipboard!';
+        status.className = 'status success';
+        
+        setTimeout(() => {
+          status.textContent = '';
+        }, 2000);
+      });
+      
+      // Auto-convert on input (with debounce)
+      let debounceTimer;
+      avroInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (avroInput.value.trim()) {
+            convertBtn.click();
+          }
+        }, 1000);
+      });
+    });
+  </script>
+</body>
+</html>
