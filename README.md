@@ -79,21 +79,84 @@ The converter maps Avro types to Hive SQL types as follows:
 ```json
 {
   "type": "record",
-  "namespace": "Tutorialspoint",
-  "name": "Employee",
+  "name": "ComplexRecord",
+  "namespace": "com.example.avro",
   "fields": [
-    { "name": "Name", "type": "string" },
-    { "name": "Age", "type": "int" },
-    { 
-      "name": "Address",
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "metadata",
       "type": {
         "type": "record",
-        "name": "AddressRecord",
+        "name": "Metadata",
         "fields": [
-          { "name": "street", "type": "string" },
-          { "name": "city", "type": "string" }
+          { "name": "created_at", "type": "long", "logicalType": "timestamp-millis" },
+          { "name": "updated_at", "type": "long", "logicalType": "timestamp-millis" },
+          { "name": "tags", "type": { "type": "array", "items": "string" } }
         ]
       }
+    },
+    {
+      "name": "user",
+      "type": {
+        "type": "record",
+        "name": "User",
+        "fields": [
+          { "name": "user_id", "type": "string" },
+          { "name": "name", "type": "string" },
+          { "name": "emails", "type": { "type": "array", "items": "string" } },
+          { "name": "addresses", "type": {
+            "type": "array",
+            "items": {
+              "type": "record",
+              "name": "Address",
+              "fields": [
+                { "name": "street", "type": "string" },
+                { "name": "city", "type": "string" },
+                { "name": "state", "type": "string" },
+                { "name": "zip", "type": "string" },
+                { "name": "country", "type": "string" }
+              ]
+            }
+          } }
+        ]
+      }
+    },
+    {
+      "name": "transactions",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "Transaction",
+          "fields": [
+            { "name": "transaction_id", "type": "string" },
+            { "name": "amount", "type": "double" },
+            { "name": "currency", "type": "string" },
+            { "name": "status", "type": { "type": "enum", "name": "Status", "symbols": ["PENDING", "COMPLETED", "FAILED"] } },
+            { "name": "items", "type": {
+              "type": "array",
+              "items": {
+                "type": "record",
+                "name": "Item",
+                "fields": [
+                  { "name": "item_id", "type": "string" },
+                  { "name": "name", "type": "string" },
+                  { "name": "quantity", "type": "int" },
+                  { "name": "price", "type": "double" }
+                ]
+              }
+            } }
+          ]
+        }
+      }
+    },
+    {
+      "name": "optional_field",
+      "type": ["null", "string"],
+      "default": null
     }
   ]
 }
@@ -102,10 +165,12 @@ The converter maps Avro types to Hive SQL types as follows:
 ### Output (Hive SQL)
 
 ```sql
-CREATE EXTERNAL TABLE employee (
-  Name STRING,
-  Age INT,
-  Address STRUCT<street:STRING, city:STRING>
+CREATE EXTERNAL TABLE default_table (
+  id STRING,
+  metadata STRUCT<created_at:BIGINT, updated_at:BIGINT, tags:ARRAY<STRING>>,
+  user STRUCT<user_id:STRING, name:STRING, emails:ARRAY<STRING>, addresses:ARRAY<STRUCT<street:STRING, city:STRING, state:STRING, zip:STRING, country:STRING>>>,
+  transactions ARRAY<STRUCT<transaction_id:STRING, amount:DOUBLE, currency:STRING, status:STRING, items:ARRAY<STRUCT<item_id:STRING, name:STRING, quantity:INT, price:DOUBLE>>>>,
+  optional_field STRING
 )
 STORED AS AVRO;
 ```
