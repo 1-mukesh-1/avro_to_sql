@@ -173,7 +173,6 @@
       const status = document.getElementById('status');
       const error = document.getElementById('error');
       
-      // Load sample schema
       const sampleSchema = {
         "type": "record",
         "name": "ComplexRecord",
@@ -261,7 +260,6 @@
       
       avroInput.value = JSON.stringify(sampleSchema, null, 2);
       
-      // Convert Avro to Hive SQL
       convertBtn.addEventListener('click', async () => {
         error.textContent = '';
         status.textContent = 'Converting...';
@@ -301,7 +299,6 @@
         }
       });
       
-      // Clear both panels
       clearBtn.addEventListener('click', () => {
         avroInput.value = '';
         hiveOutput.value = '';
@@ -310,7 +307,6 @@
         status.textContent = '';
       });
       
-      // Copy Hive SQL to clipboard
       copyBtn.addEventListener('click', () => {
         if (!hiveOutput.value) return;
         
@@ -325,7 +321,6 @@
         }, 2000);
       });
       
-      // Auto-convert on input (with debounce)
       let debounceTimer;
       avroInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
