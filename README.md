@@ -13,14 +13,7 @@ A simple web application that converts Avro schema definitions to Hive SQL CREAT
 ## Installation
 
 ```bash
-# Clone the repository (if you haven't already)
-git clone <repository-url>
-cd avro_to_sql
-
-# Install dependencies
 npm install
-
-# Start the server
 npm start
 ```
 
